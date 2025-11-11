@@ -70,6 +70,7 @@ export enum TSurveyQuestionTypeEnum {
   Address = "address",
   Ranking = "ranking",
   ContactInfo = "contactInfo",
+  Measurement = "measurement",
 }
 
 export const ZSurveyQuestionId = z.string().superRefine((id, ctx) => {
@@ -688,6 +689,60 @@ export type TSurveyAddressQuestion = z.infer<typeof ZSurveyAddressQuestion>;
 
 export type TSurveyContactInfoQuestion = z.infer<typeof ZSurveyContactInfoQuestion>;
 
+export const ZSurveyMeasurementQuestion = ZSurveyQuestionBase.extend({
+  type: z.literal(TSurveyQuestionTypeEnum.Measurement),
+  measurementType: z.enum(["height", "weight"]),
+  unit: z.enum(["cm", "ft", "in", "kg", "lb"]),
+  range: z
+    .object({
+      enabled: z.boolean().default(false).optional(),
+      min: z.number().optional(),
+      max: z.number().optional(),
+    })
+    .default({ enabled: false }),
+}).superRefine((data, ctx) => {
+  // Validate that unit matches measurement type
+  if (data.measurementType === "height" && !["cm", "ft", "in"].includes(data.unit)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Height must use cm, ft, or in as unit",
+    });
+  }
+  if (data.measurementType === "weight" && !["kg", "lb"].includes(data.unit)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Weight must use kg or lb as unit",
+    });
+  }
+
+  // Validate range if enabled
+  if (data.range.enabled && data.range.min === undefined && data.range.max === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Enter the values for either minimum or maximum field",
+    });
+  }
+
+  if (
+    (data.range.min !== undefined && data.range.min < 0) ||
+    (data.range.max !== undefined && data.range.max < 0)
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "The range values should be positive",
+    });
+  }
+
+  if (data.range.min !== undefined && data.range.max !== undefined && data.range.min > data.range.max) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Minimum value cannot be greater than the maximum value",
+    });
+  }
+});
+
+export type TSurveyMeasurementQuestion = z.infer<typeof ZSurveyMeasurementQuestion>;
+
 export const ZSurveyRankingQuestion = ZSurveyQuestionBase.extend({
   type: z.literal(TSurveyQuestionTypeEnum.Ranking),
   choices: z
@@ -715,6 +770,7 @@ export const ZSurveyQuestion = z.union([
   ZSurveyAddressQuestion,
   ZSurveyRankingQuestion,
   ZSurveyContactInfoQuestion,
+  ZSurveyMeasurementQuestion,
 ]);
 
 export type TSurveyQuestion = z.infer<typeof ZSurveyQuestion>;
@@ -739,6 +795,7 @@ export const ZSurveyQuestionType = z.enum([
   TSurveyQuestionTypeEnum.Cal,
   TSurveyQuestionTypeEnum.Ranking,
   TSurveyQuestionTypeEnum.ContactInfo,
+  TSurveyQuestionTypeEnum.Measurement,
 ]);
 
 export type TSurveyQuestionType = z.infer<typeof ZSurveyQuestionType>;

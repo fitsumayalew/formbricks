@@ -23,6 +23,7 @@ import {
   MousePointerClickIcon,
   PieChartIcon,
   Rows3Icon,
+  RulerIcon,
   SmartphoneIcon,
   StarIcon,
   User,
@@ -84,6 +85,7 @@ const questionIcons = {
   [TSurveyQuestionTypeEnum.Ranking]: ListOrderedIcon,
   [TSurveyQuestionTypeEnum.Address]: HomeIcon,
   [TSurveyQuestionTypeEnum.ContactInfo]: ContactIcon,
+  [TSurveyQuestionTypeEnum.Measurement]: RulerIcon,
 
   // attributes
   [OptionsType.ATTRIBUTES]: User,

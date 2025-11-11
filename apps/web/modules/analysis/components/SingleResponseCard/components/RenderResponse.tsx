@@ -119,6 +119,18 @@ export const RenderResponse: React.FC<RenderResponseProps> = ({
       }
       break;
 
+    case TSurveyQuestionTypeEnum.Measurement:
+      if (typeof responseData === "string") {
+        try {
+          const parsed = JSON.parse(responseData);
+          const displayValue = `${parsed.value} ${parsed.unit}`;
+          return <p className="ph-no-capture my-1 font-normal text-slate-700">{displayValue}</p>;
+        } catch {
+          return <p className="ph-no-capture my-1 font-normal text-slate-700">{responseData}</p>;
+        }
+      }
+      break;
+
     case TSurveyQuestionTypeEnum.Cal:
       if (typeof responseData === "string" || typeof responseData === "number") {
         return (

@@ -16,6 +16,7 @@ import { CTAQuestion } from "@/components/questions/cta-question";
 import { DateQuestion } from "@/components/questions/date-question";
 import { FileUploadQuestion } from "@/components/questions/file-upload-question";
 import { MatrixQuestion } from "@/components/questions/matrix-question";
+import { MeasurementQuestion } from "@/components/questions/measurement-question";
 import { MultipleChoiceMultiQuestion } from "@/components/questions/multiple-choice-multi-question";
 import { MultipleChoiceSingleQuestion } from "@/components/questions/multiple-choice-single-question";
 import { NPSQuestion } from "@/components/questions/nps-question";
@@ -353,6 +354,24 @@ export function QuestionConditional({
     <ContactInfoQuestion
       question={question}
       value={Array.isArray(value) ? value : undefined}
+      onChange={onChange}
+      onSubmit={onSubmit}
+      onBack={onBack}
+      isFirstQuestion={isFirstQuestion}
+      isLastQuestion={isLastQuestion}
+      languageCode={languageCode}
+      ttc={ttc}
+      setTtc={setTtc}
+      currentQuestionId={currentQuestionId}
+      autoFocusEnabled={autoFocusEnabled}
+      isBackButtonHidden={isBackButtonHidden}
+      dir={dir}
+      fullSizeCards={fullSizeCards}
+    />
+  ) : question.type === TSurveyQuestionTypeEnum.Measurement ? (
+    <MeasurementQuestion
+      question={question}
+      value={typeof value === "string" ? value : undefined}
       onChange={onChange}
       onSubmit={onSubmit}
       onBack={onBack}

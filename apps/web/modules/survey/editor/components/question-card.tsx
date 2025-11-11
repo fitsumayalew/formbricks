@@ -30,6 +30,7 @@ import { DateQuestionForm } from "@/modules/survey/editor/components/date-questi
 import { EditorCardMenu } from "@/modules/survey/editor/components/editor-card-menu";
 import { FileUploadQuestionForm } from "@/modules/survey/editor/components/file-upload-question-form";
 import { MatrixQuestionForm } from "@/modules/survey/editor/components/matrix-question-form";
+import { MeasurementQuestionForm } from "@/modules/survey/editor/components/measurement-question-form";
 import { MultipleChoiceQuestionForm } from "@/modules/survey/editor/components/multiple-choice-question-form";
 import { NPSQuestionForm } from "@/modules/survey/editor/components/nps-question-form";
 import { OpenQuestionForm } from "@/modules/survey/editor/components/open-question-form";
@@ -474,6 +475,20 @@ export const QuestionCard = ({
             />
           ) : question.type === TSurveyQuestionTypeEnum.ContactInfo ? (
             <ContactInfoQuestionForm
+              localSurvey={localSurvey}
+              question={question}
+              questionIdx={questionIdx}
+              updateQuestion={updateQuestion}
+              lastQuestion={lastQuestion}
+              selectedLanguageCode={selectedLanguageCode}
+              setSelectedLanguageCode={setSelectedLanguageCode}
+              isInvalid={isInvalid}
+              locale={locale}
+              isStorageConfigured={isStorageConfigured}
+              isExternalUrlsAllowed={isExternalUrlsAllowed}
+            />
+          ) : question.type === TSurveyQuestionTypeEnum.Measurement ? (
+            <MeasurementQuestionForm
               localSurvey={localSurvey}
               question={question}
               questionIdx={questionIdx}

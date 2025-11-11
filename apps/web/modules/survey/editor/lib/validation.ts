@@ -132,6 +132,10 @@ export const validationRules = {
   address: (question: TSurveyAddressQuestion, languages: TSurveyLanguage[]) => {
     return handleI18nCheckForContactAndAddressFields(question, languages);
   },
+  measurement: () => {
+    // Measurement questions don't have special validation requirements
+    return true;
+  },
   // Assuming headline is of type TI18nString
   defaultValidation: (question: TSurveyQuestion, languages: TSurveyLanguage[], isFirstQuestion: boolean) => {
     // headline and subheader are default for every question

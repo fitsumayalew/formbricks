@@ -17,6 +17,7 @@ import {
   PhoneIcon,
   PresentationIcon,
   Rows3Icon,
+  RulerIcon,
   StarIcon,
 } from "lucide-react";
 import type { JSX } from "react";
@@ -30,6 +31,7 @@ import {
   TSurveyDateQuestion,
   TSurveyFileUploadQuestion,
   TSurveyMatrixQuestion,
+  TSurveyMeasurementQuestion,
   TSurveyMultipleChoiceQuestion,
   TSurveyNPSQuestion,
   TSurveyOpenTextQuestion,
@@ -289,6 +291,20 @@ export const getQuestionTypes = (t: TFunction): TQuestion[] => [
       buttonLabel: createI18nString(t("templates.next"), []),
       backButtonLabel: createI18nString(t("templates.back"), []),
     } as Partial<TSurveyContactInfoQuestion>,
+  },
+  {
+    id: QuestionId.Measurement,
+    label: t("templates.measurement"),
+    description: t("templates.measurement_description"),
+    icon: RulerIcon,
+    preset: {
+      headline: createI18nString("", []),
+      measurementType: "height",
+      unit: "cm",
+      range: { enabled: false },
+      buttonLabel: createI18nString(t("templates.next"), []),
+      backButtonLabel: createI18nString(t("templates.back"), []),
+    } as Partial<TSurveyMeasurementQuestion>,
   },
 ];
 
