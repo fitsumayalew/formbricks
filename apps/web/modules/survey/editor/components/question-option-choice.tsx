@@ -162,7 +162,8 @@ export const QuestionOptionChoice = ({
               selectedLanguageCode={selectedLanguageCode}
               setSelectedLanguageCode={setSelectedLanguageCode}
               isInvalid={
-                isInvalid && !isLabelValidForAllLanguages(question.choices?.[choiceIdx]?.label, surveyLanguages)
+                isInvalid &&
+                !isLabelValidForAllLanguages(question.choices?.[choiceIdx]?.label, surveyLanguages)
               }
               className="border border-dashed"
               locale={locale}

@@ -239,7 +239,9 @@ export const RenderResponse: React.FC<RenderResponseProps> = ({
                               </>
                             );
                           }
-                          return <div className="rounded bg-slate-100 px-2 py-1 font-semibold">{item.value}</div>;
+                          return (
+                            <div className="rounded bg-slate-100 px-2 py-1 font-semibold">{item.value}</div>
+                          );
                         })()}
                         {item.id && showId && <IdBadge id={item.id} />}
                       </div>
@@ -251,7 +253,12 @@ export const RenderResponse: React.FC<RenderResponseProps> = ({
           return <RankingResponse value={itemsArray} isExpanded={isExpanded} showId={showId} />;
         } else if (hasImages) {
           return (
-            <div className={cn("my-1 flex gap-x-5 gap-y-4", isExpanded ? "flex-wrap" : "", showId ? "flex-col" : "")}>
+            <div
+              className={cn(
+                "my-1 flex gap-x-5 gap-y-4",
+                isExpanded ? "flex-wrap" : "",
+                showId ? "flex-col" : ""
+              )}>
               {itemsArray.map((item) => {
                 const choice = multiChoiceQuestion.choices?.find((c) => c.id === item.id);
                 if (choice?.imageUrl) {
