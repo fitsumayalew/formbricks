@@ -1,12 +1,15 @@
 import { CheckCheckIcon, MousePointerClickIcon, PhoneIcon } from "lucide-react";
+import Image from "next/image";
 import React from "react";
 import { TResponseDataValue } from "@formbricks/types/responses";
 import {
   TSurvey,
   TSurveyMatrixQuestion,
+  TSurveyMultipleChoiceQuestion,
   TSurveyPictureSelectionQuestion,
   TSurveyQuestion,
   TSurveyQuestionTypeEnum,
+  TSurveyRankingQuestion as TSurveyRankingQuestionType,
   TSurveyRatingQuestion,
 } from "@formbricks/types/surveys/types";
 import { cn } from "@/lib/cn";
@@ -17,6 +20,7 @@ import { formatDateWithOrdinal } from "@/lib/utils/datetime";
 import { renderHyperlinkedContent } from "@/modules/analysis/utils";
 import { ArrayResponse } from "@/modules/ui/components/array-response";
 import { FileUploadResponse } from "@/modules/ui/components/file-upload-response";
+import { IdBadge } from "@/modules/ui/components/id-badge";
 import { PictureSelectionResponse } from "@/modules/ui/components/picture-selection-response";
 import { RankingResponse } from "@/modules/ui/components/ranking-response";
 import { RatingResponse } from "@/modules/ui/components/rating-response";
@@ -169,9 +173,32 @@ export const RenderResponse: React.FC<RenderResponseProps> = ({
       break;
     case TSurveyQuestionTypeEnum.MultipleChoiceMulti:
     case TSurveyQuestionTypeEnum.MultipleChoiceSingle:
-    case TSurveyQuestionTypeEnum.Ranking:
+    case TSurveyQuestionTypeEnum.Ranking: {
+      const multiChoiceQuestion = question as TSurveyMultipleChoiceQuestion | TSurveyRankingQuestionType;
+      const hasImages = multiChoiceQuestion.choices?.some((choice) => choice.imageUrl);
+
       if (typeof responseData === "string" || typeof responseData === "number") {
         const choiceId = getChoiceIdByValue(responseData.toString(), question);
+        const choice = multiChoiceQuestion.choices?.find((c) => c.id === choiceId);
+
+        if (hasImages && choice?.imageUrl) {
+          return (
+            <div className="my-1 flex items-center gap-2">
+              <div className="relative h-10 w-16">
+                <Image
+                  src={choice.imageUrl}
+                  alt={responseData.toString()}
+                  fill
+                  style={{ objectFit: "cover" }}
+                  className="rounded-lg"
+                />
+              </div>
+              <span className="font-medium text-slate-700">{responseData.toString()}</span>
+              {choiceId && showId && <IdBadge id={choiceId} />}
+            </div>
+          );
+        }
+
         return (
           <ResponseBadges
             items={[{ value: responseData.toString(), id: choiceId }]}
@@ -184,17 +211,83 @@ export const RenderResponse: React.FC<RenderResponseProps> = ({
           const choiceId = getChoiceIdByValue(choice, question);
           return { value: choice, id: choiceId };
         });
-        return (
-          <>
-            {questionType === TSurveyQuestionTypeEnum.Ranking ? (
-              <RankingResponse value={itemsArray} isExpanded={isExpanded} showId={showId} />
-            ) : (
-              <ResponseBadges items={itemsArray} isExpanded={isExpanded} showId={showId} />
-            )}
-          </>
-        );
+
+        if (questionType === TSurveyQuestionTypeEnum.Ranking) {
+          if (hasImages) {
+            return (
+              <div className={cn("text-slate-700", isExpanded ? "space-y-2" : "flex space-x-2")}>
+                {itemsArray.map(
+                  (item, index) =>
+                    item.value && (
+                      <div key={item.value} className="flex items-center space-x-2">
+                        <span className="text-slate-400">#{index + 1}</span>
+                        {(() => {
+                          const choice = multiChoiceQuestion.choices?.find((c) => c.id === item.id);
+                          if (choice?.imageUrl) {
+                            return (
+                              <>
+                                <div className="relative h-10 w-16">
+                                  <Image
+                                    src={choice.imageUrl}
+                                    alt={item.value}
+                                    fill
+                                    style={{ objectFit: "cover" }}
+                                    className="rounded-lg"
+                                  />
+                                </div>
+                                <span className="font-medium">{item.value}</span>
+                              </>
+                            );
+                          }
+                          return <div className="rounded bg-slate-100 px-2 py-1 font-semibold">{item.value}</div>;
+                        })()}
+                        {item.id && showId && <IdBadge id={item.id} />}
+                      </div>
+                    )
+                )}
+              </div>
+            );
+          }
+          return <RankingResponse value={itemsArray} isExpanded={isExpanded} showId={showId} />;
+        } else if (hasImages) {
+          return (
+            <div className={cn("my-1 flex gap-x-5 gap-y-4", isExpanded ? "flex-wrap" : "", showId ? "flex-col" : "")}>
+              {itemsArray.map((item) => {
+                const choice = multiChoiceQuestion.choices?.find((c) => c.id === item.id);
+                if (choice?.imageUrl) {
+                  return (
+                    <div className="flex items-center gap-2" key={item.value}>
+                      <div className="relative h-10 w-16">
+                        <Image
+                          src={choice.imageUrl}
+                          alt={item.value}
+                          fill
+                          style={{ objectFit: "cover" }}
+                          className="rounded-lg"
+                        />
+                      </div>
+                      <span className="font-medium text-slate-700">{item.value}</span>
+                      {item.id && showId && <IdBadge id={item.id} />}
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex items-center gap-2" key={item.value}>
+                    <span className="flex items-center rounded-md bg-slate-200 px-2 py-1 font-medium">
+                      {item.value}
+                    </span>
+                    {item.id && showId && <IdBadge id={item.id} />}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        }
+
+        return <ResponseBadges items={itemsArray} isExpanded={isExpanded} showId={showId} />;
       }
       break;
+    }
 
     default:
       if (

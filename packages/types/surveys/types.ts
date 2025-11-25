@@ -240,6 +240,7 @@ export type TSurveyMetadata = z.infer<typeof ZSurveyMetadata>;
 export const ZSurveyQuestionChoice = z.object({
   id: z.string(),
   label: ZI18nString,
+  imageUrl: z.string().optional(),
 });
 
 export const ZSurveyPictureChoice = z.object({

@@ -47,6 +47,15 @@ export function MultipleChoiceMultiQuestion({
   fullSizeCards,
 }: Readonly<MultipleChoiceMultiProps>) {
   const [startTime, setStartTime] = useState(performance.now());
+  const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>(() => {
+    const initialLoadingState: Record<string, boolean> = {};
+    question.choices.forEach((choice) => {
+      if (choice.imageUrl) {
+        initialLoadingState[choice.id] = true;
+      }
+    });
+    return initialLoadingState;
+  });
   const isMediaAvailable = question.imageUrl || question.videoUrl;
   useTtc(question.id, ttc, setTtc, startTime, setStartTime, question.id === currentQuestionId);
   const isCurrent = question.id === currentQuestionId;
@@ -194,6 +203,7 @@ export function MultipleChoiceMultiQuestion({
             <div className="fb-bg-survey-bg fb-relative fb-space-y-2" ref={choicesContainerRef}>
               {questionChoices.map((choice, idx) => {
                 if (!choice || choice.id === "other" || choice.id === "none") return;
+                const hasImage = !!choice.imageUrl;
                 return (
                   <label
                     key={choice.id}
@@ -213,6 +223,27 @@ export function MultipleChoiceMultiQuestion({
                       }
                     }}
                     autoFocus={idx === 0 && autoFocusEnabled}>
+                    {hasImage && (
+                      <div className="fb-mb-3 fb-relative fb-w-full fb-rounded-md fb-overflow-hidden">
+                        {loadingImages[choice.id] && (
+                          <div className="fb-absolute fb-inset-0 fb-flex fb-h-32 fb-w-full fb-animate-pulse fb-items-center fb-justify-center fb-rounded-md fb-bg-slate-200" />
+                        )}
+                        <img
+                          src={choice.imageUrl}
+                          alt={getLocalizedValue(choice.label, languageCode)}
+                          className={cn(
+                            "fb-h-32 fb-w-full fb-object-cover fb-rounded-md",
+                            loadingImages[choice.id] ? "fb-opacity-0" : ""
+                          )}
+                          onLoad={() => {
+                            setLoadingImages((prev) => ({ ...prev, [choice.id]: false }));
+                          }}
+                          onError={() => {
+                            setLoadingImages((prev) => ({ ...prev, [choice.id]: false }));
+                          }}
+                        />
+                      </div>
+                    )}
                     <span className="fb-flex fb-items-center fb-text-sm">
                       <input
                         type="checkbox"

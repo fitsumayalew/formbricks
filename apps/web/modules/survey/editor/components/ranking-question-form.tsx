@@ -48,7 +48,7 @@ export const RankingQuestionForm = ({
   const surveyLanguageCodes = extractLanguageCodes(localSurvey.languages);
   const surveyLanguages = localSurvey.languages ?? [];
 
-  const updateChoice = (choiceIdx: number, updatedAttributes: { label: TI18nString }) => {
+  const updateChoice = (choiceIdx: number, updatedAttributes: { label?: TI18nString; imageUrl?: string }) => {
     if (question.choices) {
       const newChoices = question.choices.map((choice, idx) => {
         if (idx !== choiceIdx) return choice;

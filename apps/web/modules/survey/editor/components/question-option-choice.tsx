@@ -2,7 +2,8 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVerticalIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { GripVerticalIcon, ImageIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TI18nString,
@@ -17,6 +18,7 @@ import { cn } from "@/lib/cn";
 import { createI18nString } from "@/lib/i18n/utils";
 import { QuestionFormInput } from "@/modules/survey/components/question-form-input";
 import { Button } from "@/modules/ui/components/button";
+import { FileInput } from "@/modules/ui/components/file-input";
 import { TooltipRenderer } from "@/modules/ui/components/tooltip";
 import { isLabelValidForAllLanguages } from "../lib/validation";
 
@@ -24,7 +26,7 @@ interface ChoiceProps {
   choice: TSurveyQuestionChoice;
   choiceIdx: number;
   questionIdx: number;
-  updateChoice: (choiceIdx: number, updatedAttributes: { label: TI18nString }) => void;
+  updateChoice: (choiceIdx: number, updatedAttributes: { label?: TI18nString; imageUrl?: string }) => void;
   deleteChoice: (choiceIdx: number) => void;
   addChoice: (choiceIdx: number) => void;
   isInvalid: boolean;
@@ -61,6 +63,7 @@ export const QuestionOptionChoice = ({
   isStorageConfigured,
 }: ChoiceProps) => {
   const { t } = useTranslation();
+  const [showImageUpload, setShowImageUpload] = useState(!!choice.imageUrl);
   const isSpecialChoice = choice.id === "other" || choice.id === "none";
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: choice.id,
@@ -92,110 +95,143 @@ export const QuestionOptionChoice = ({
   const normalChoice = question.choices?.filter((c) => c.id !== "other" && c.id !== "none") || [];
 
   return (
-    <div className="flex w-full gap-2" ref={setNodeRef} style={style}>
-      {/* drag handle */}
-      <div className={cn(isSpecialChoice && "invisible")} {...listeners} {...attributes}>
-        <GripVerticalIcon className="h-4 w-4 cursor-move text-slate-400" />
-      </div>
+    <div className="flex w-full flex-col gap-2" ref={setNodeRef} style={style}>
+      <div className="flex w-full items-center gap-2">
+        {/* drag handle */}
+        <div className={cn(isSpecialChoice && "invisible")} {...listeners} {...attributes}>
+          <GripVerticalIcon className="h-4 w-4 cursor-move text-slate-400" />
+        </div>
 
-      <div className="flex w-full space-x-2">
-        <QuestionFormInput
-          key={choice.id}
-          id={`choice-${choiceIdx}`}
-          placeholder={getPlaceholder()}
-          label={""}
-          localSurvey={localSurvey}
-          questionIdx={questionIdx}
-          value={choice.label}
-          updateChoice={updateChoice}
-          selectedLanguageCode={selectedLanguageCode}
-          setSelectedLanguageCode={setSelectedLanguageCode}
-          isInvalid={
-            isInvalid && !isLabelValidForAllLanguages(question.choices?.[choiceIdx]?.label, surveyLanguages)
-          }
-          className={`${isSpecialChoice ? "border border-dashed" : ""} mt-0`}
-          locale={locale}
-          isStorageConfigured={isStorageConfigured}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && choice.id !== "other") {
-              e.preventDefault();
-              const lastChoiceIdx = question.choices?.findLastIndex((c) => c.id !== "other") ?? -1;
-
-              if (choiceIdx === lastChoiceIdx) {
-                addChoiceAndFocus(choiceIdx);
-              } else {
-                focusChoiceInput(choiceIdx + 1);
-              }
-            }
-
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              if (choiceIdx + 1 < (question.choices?.length ?? 0)) {
-                focusChoiceInput(choiceIdx + 1);
-              }
-            }
-
-            if (e.key === "ArrowUp") {
-              e.preventDefault();
-              if (choiceIdx > 0) {
-                focusChoiceInput(choiceIdx - 1);
-              }
-            }
-          }}
-        />
-        {choice.id === "other" && (
+        <div className="flex w-full space-x-2">
           <QuestionFormInput
-            id="otherOptionPlaceholder"
-            localSurvey={localSurvey}
-            placeholder={t("environments.surveys.edit.please_specify")}
+            key={choice.id}
+            id={`choice-${choiceIdx}`}
+            placeholder={getPlaceholder()}
             label={""}
+            localSurvey={localSurvey}
             questionIdx={questionIdx}
-            value={
-              question.otherOptionPlaceholder ??
-              createI18nString(t("environments.surveys.edit.please_specify"), surveyLanguageCodes)
-            }
-            updateQuestion={updateQuestion}
+            value={choice.label}
+            updateChoice={updateChoice}
             selectedLanguageCode={selectedLanguageCode}
             setSelectedLanguageCode={setSelectedLanguageCode}
             isInvalid={
               isInvalid && !isLabelValidForAllLanguages(question.choices?.[choiceIdx]?.label, surveyLanguages)
             }
-            className="border border-dashed"
+            className={`${isSpecialChoice ? "border border-dashed" : ""} mt-0`}
             locale={locale}
             isStorageConfigured={isStorageConfigured}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && choice.id !== "other") {
+                e.preventDefault();
+                const lastChoiceIdx = question.choices?.findLastIndex((c) => c.id !== "other") ?? -1;
+
+                if (choiceIdx === lastChoiceIdx) {
+                  addChoiceAndFocus(choiceIdx);
+                } else {
+                  focusChoiceInput(choiceIdx + 1);
+                }
+              }
+
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                if (choiceIdx + 1 < (question.choices?.length ?? 0)) {
+                  focusChoiceInput(choiceIdx + 1);
+                }
+              }
+
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                if (choiceIdx > 0) {
+                  focusChoiceInput(choiceIdx - 1);
+                }
+              }
+            }}
           />
-        )}
+          {choice.id === "other" && (
+            <QuestionFormInput
+              id="otherOptionPlaceholder"
+              localSurvey={localSurvey}
+              placeholder={t("environments.surveys.edit.please_specify")}
+              label={""}
+              questionIdx={questionIdx}
+              value={
+                question.otherOptionPlaceholder ??
+                createI18nString(t("environments.surveys.edit.please_specify"), surveyLanguageCodes)
+              }
+              updateQuestion={updateQuestion}
+              selectedLanguageCode={selectedLanguageCode}
+              setSelectedLanguageCode={setSelectedLanguageCode}
+              isInvalid={
+                isInvalid && !isLabelValidForAllLanguages(question.choices?.[choiceIdx]?.label, surveyLanguages)
+              }
+              className="border border-dashed"
+              locale={locale}
+              isStorageConfigured={isStorageConfigured}
+            />
+          )}
+        </div>
+        <div className="flex gap-2">
+          {!isSpecialChoice && (
+            <TooltipRenderer tooltipContent={t("environments.surveys.edit.add_image_to_option")}>
+              <Button
+                variant={showImageUpload ? "default" : "secondary"}
+                size="icon"
+                aria-label="Add image to option"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowImageUpload(!showImageUpload);
+                }}>
+                <ImageIcon />
+              </Button>
+            </TooltipRenderer>
+          )}
+          {(normalChoice.length > 2 || isSpecialChoice) && (
+            <TooltipRenderer tooltipContent={t("environments.surveys.edit.delete_choice")}>
+              <Button
+                variant="secondary"
+                size="icon"
+                aria-label="Delete choice"
+                onClick={(e) => {
+                  e.preventDefault();
+                  deleteChoice(choiceIdx);
+                }}>
+                <TrashIcon />
+              </Button>
+            </TooltipRenderer>
+          )}
+          {!isSpecialChoice && (
+            <TooltipRenderer tooltipContent={t("environments.surveys.edit.add_choice_below")}>
+              <Button
+                variant="secondary"
+                size="icon"
+                aria-label="Add choice below"
+                onClick={(e) => {
+                  e.preventDefault();
+                  addChoiceAndFocus(choiceIdx);
+                }}>
+                <PlusIcon />
+              </Button>
+            </TooltipRenderer>
+          )}
+        </div>
       </div>
-      <div className="flex gap-2">
-        {(normalChoice.length > 1 || isSpecialChoice) && (
-          <TooltipRenderer tooltipContent={t("environments.surveys.edit.delete_choice")}>
-            <Button
-              variant="secondary"
-              size="icon"
-              aria-label="Delete choice"
-              onClick={(e) => {
-                e.preventDefault();
-                deleteChoice(choiceIdx);
-              }}>
-              <TrashIcon />
-            </Button>
-          </TooltipRenderer>
-        )}
-        {!isSpecialChoice && (
-          <TooltipRenderer tooltipContent={t("environments.surveys.edit.add_choice_below")}>
-            <Button
-              variant="secondary"
-              size="icon"
-              aria-label="Add choice below"
-              onClick={(e) => {
-                e.preventDefault();
-                addChoiceAndFocus(choiceIdx);
-              }}>
-              <PlusIcon />
-            </Button>
-          </TooltipRenderer>
-        )}
-      </div>
+      {showImageUpload && !isSpecialChoice && (
+        <div className="ml-6 w-full">
+          <div className="flex w-full items-center justify-center rounded-md border border-slate-200 p-2">
+            <FileInput
+              id={`choice-${choiceIdx}-image`}
+              allowedFileExtensions={["png", "jpeg", "jpg", "webp", "heic"]}
+              environmentId={localSurvey.environmentId}
+              onFileUpload={(urls: string[]) => {
+                updateChoice(choiceIdx, { imageUrl: urls[0] || "" });
+              }}
+              fileUrl={choice.imageUrl}
+              maxSizeInMB={5}
+              isStorageConfigured={isStorageConfigured}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

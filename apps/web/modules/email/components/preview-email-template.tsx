@@ -73,7 +73,7 @@ export async function PreviewEmailTemplate({
   surveyUrl,
   styling,
   t,
-}: PreviewEmailTemplateProps): Promise<React.JSX.Element> {
+}: PreviewEmailTemplateProps): Promise<React.JSX.Element|undefined> {
   const url = `${surveyUrl}?preview=true`;
   const urlWithPrefilling = `${surveyUrl}?preview=true&skipPrefilled=true&`;
   const defaultLanguageCode = "default";
