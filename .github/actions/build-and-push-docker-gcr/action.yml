@@ -1,0 +1,207 @@
+name: Build and Push Docker Image
+description: |
+  Docker build and push action for GHCR registry.
+
+  Supports:
+  - GHCR builds for community self-hosting
+  - Automatic version resolution and tagging
+  - Conditional signing and deployment tags
+
+inputs:
+  # Version input
+  version:
+    description: "Explicit version (SemVer only, e.g., 1.2.3). If provided, this version is used directly. If empty, version is auto-generated from branch name."
+    required: false
+  experimental_mode:
+    description: "Enable experimental timestamped versions"
+    required: false
+    default: "false"
+
+  # GHCR specific inputs
+  ghcr_image_name:
+    description: "GHCR image name (required)"
+    required: true
+
+  # Deployment options
+  is_prerelease:
+    description: "Whether this is a prerelease (auto-tags for staging/production)"
+    required: false
+    default: "false"
+  make_latest:
+    description: "Whether to tag as latest/production (from GitHub release 'Set as the latest release' option)"
+    required: false
+    default: "false"
+
+  # Build options
+  dockerfile:
+    description: "Path to Dockerfile"
+    required: false
+    default: "apps/web/Dockerfile"
+  context:
+    description: "Build context"
+    required: false
+    default: "."
+
+outputs:
+  image_tag:
+    description: "Resolved image tag used for the build"
+    value: ${{ steps.version.outputs.version }}
+  registry_tags:
+    description: "Complete registry tags that were pushed"
+    value: ${{ steps.build.outputs.tags }}
+  image_digest:
+    description: "Image digest from the build"
+    value: ${{ steps.build.outputs.digest }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        GHCR_IMAGE_NAME: ${{ inputs.ghcr_image_name }}
+      run: |
+        set -euo pipefail
+
+        if [[ -z "$GHCR_IMAGE_NAME" ]]; then
+          echo "ERROR: GHCR builds require ghcr_image_name"
+          exit 1
+        fi
+
+        echo "SUCCESS: Input validation passed for GHCR build"
+
+    - name: Resolve Docker version
+      id: version
+      uses: ./.github/actions/resolve-docker-version
+      with:
+        version: ${{ inputs.version }}
+        current_branch: ${{ github.ref_name }}
+        experimental_mode: ${{ inputs.experimental_mode }}
+
+    - name: Update package.json version
+      uses: ./.github/actions/update-package-version
+      with:
+        version: ${{ steps.version.outputs.version }}
+
+    - name: Set up Docker build tools
+      uses: ./.github/actions/docker-build-setup
+      with:
+        registry: ghcr.io
+        setup_cosign: "true"
+        skip_login_on_pr: "true"
+
+    - name: Generate additional GHCR tags for releases
+      if: ${{ inputs.experimental_mode == 'false' && (github.event_name == 'workflow_call' || github.event_name == 'release' || github.event_name == 'workflow_dispatch') }}
+      id: ghcr-extra-tags
+      shell: bash
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        IMAGE_NAME: ${{ inputs.ghcr_image_name }}
+        IS_PRERELEASE: ${{ inputs.is_prerelease }}
+        MAKE_LATEST: ${{ inputs.make_latest }}
+      run: |
+        set -euo pipefail
+
+        # Start with base version tag
+        TAGS="ghcr.io/${IMAGE_NAME}:${VERSION}"
+
+        # For proper SemVer releases, add major.minor and major tags
+        if [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          # Extract major and minor versions
+          MAJOR=$(echo "${VERSION}" | cut -d. -f1)
+          MINOR=$(echo "${VERSION}" | cut -d. -f2)
+          
+          TAGS="${TAGS}\nghcr.io/${IMAGE_NAME}:${MAJOR}.${MINOR}"
+          TAGS="${TAGS}\nghcr.io/${IMAGE_NAME}:${MAJOR}"
+          
+          echo "Added SemVer tags: ${MAJOR}.${MINOR}, ${MAJOR}"
+        fi
+
+        # Add latest tag for stable releases marked as latest
+        if [[ "${IS_PRERELEASE}" == "false" && "${MAKE_LATEST}" == "true" ]]; then
+          TAGS="${TAGS}\nghcr.io/${IMAGE_NAME}:latest"
+          echo "Added latest tag for stable release marked as latest"
+        fi
+
+        echo "Generated GHCR tags:"
+        echo -e "${TAGS}"
+
+        # Debug: Show what will be passed to Docker build
+        echo "DEBUG: Tags for Docker build step:"
+        echo -e "${TAGS}"
+
+        {
+          echo "tags<<EOF"
+          echo -e "${TAGS}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
+
+    - name: Build GHCR metadata (experimental)
+      if: ${{ inputs.experimental_mode == 'true' }}
+      id: ghcr-meta-experimental
+      uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
+      with:
+        images: ghcr.io/${{ inputs.ghcr_image_name }}
+        tags: |
+          type=ref,event=branch
+          type=raw,value=${{ steps.version.outputs.version }}
+
+    - name: Debug Docker build tags
+      shell: bash
+      run: |
+        echo "=== DEBUG: Docker Build Configuration ==="
+        echo "Experimental Mode: ${{ inputs.experimental_mode }}"
+        echo "Event Name: ${{ github.event_name }}"
+        echo "Is Prerelease: ${{ inputs.is_prerelease }}"
+        echo "Make Latest: ${{ inputs.make_latest }}"
+        echo "Version: ${{ steps.version.outputs.version }}"
+
+        if [[ "${{ inputs.experimental_mode }}" == "true" ]]; then
+          echo "GHCR Experimental Tags: ${{ steps.ghcr-meta-experimental.outputs.tags }}"
+        else
+          echo "GHCR Extra Tags: ${{ steps.ghcr-extra-tags.outputs.tags }}"
+        fi
+
+    - name: Build and push Docker image
+      id: build
+      uses: depot/build-push-action@636daae76684e38c301daa0c5eca1c095b24e780 # v1.14.0
+      with:
+        project: tw0fqmsx3c
+        token: ${{ env.DEPOT_PROJECT_TOKEN }}
+        context: ${{ inputs.context }}
+        file: ${{ inputs.dockerfile }}
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ inputs.experimental_mode == 'true' && steps.ghcr-meta-experimental.outputs.tags || steps.ghcr-extra-tags.outputs.tags || format('ghcr.io/{0}:{1}', inputs.ghcr_image_name, steps.version.outputs.version) }}
+        labels: ${{ inputs.experimental_mode == 'true' && steps.ghcr-meta-experimental.outputs.labels || '' }}
+        secrets: |
+          database_url=${{ env.DUMMY_DATABASE_URL }}
+          encryption_key=${{ env.DUMMY_ENCRYPTION_KEY }}
+          redis_url=${{ env.DUMMY_REDIS_URL }}
+          sentry_auth_token=${{ env.SENTRY_AUTH_TOKEN }}
+      env:
+        DEPOT_PROJECT_TOKEN: ${{ env.DEPOT_PROJECT_TOKEN }}
+        DUMMY_DATABASE_URL: ${{ env.DUMMY_DATABASE_URL }}
+        DUMMY_ENCRYPTION_KEY: ${{ env.DUMMY_ENCRYPTION_KEY }}
+        DUMMY_REDIS_URL: ${{ env.DUMMY_REDIS_URL }}
+        SENTRY_AUTH_TOKEN: ${{ env.SENTRY_AUTH_TOKEN }}
+
+    - name: Sign GHCR image
+      if: ${{ github.event_name == 'workflow_call' || github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
+      shell: bash
+      env:
+        TAGS: ${{ inputs.experimental_mode == 'true' && steps.ghcr-meta-experimental.outputs.tags || steps.ghcr-extra-tags.outputs.tags }}
+        DIGEST: ${{ steps.build.outputs.digest }}
+      run: |
+        set -euo pipefail
+        echo "${TAGS}" | xargs -I {} cosign sign --yes "{}@${DIGEST}"
+
+    - name: Output build summary
+      shell: bash
+      env:
+        IMAGE_TAG: ${{ steps.version.outputs.version }}
+        VERSION_SOURCE: ${{ steps.version.outputs.source }}
+      run: |
+        echo "SUCCESS: Built and pushed Docker image to GHCR"
+        echo "Image Tag: $IMAGE_TAG (source: $VERSION_SOURCE)"
+        echo "GHCR Image: ghcr.io/${{ inputs.ghcr_image_name }}"
